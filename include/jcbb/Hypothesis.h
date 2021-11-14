@@ -1,33 +1,17 @@
-#ifndef JCBB_H
-#define JCBB_H
+#ifndef HYPOTHESIS_H
+#define HYPOTHESIS_H
 
 #include <vector>
-#include <queue>
-#include <memory>
-#include <limits>
+#include <optional>
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Cholesky>
-#include <optional>
-#include <numeric>
+#include <memory>
 #include <unordered_set>
-#include <iostream>
+#include "Marginals.h"
+
 
 namespace jcbb
 {
-    template <class T>
-    using MinHeap = std::priority_queue<T, std::vector<T>, std::greater<T>>;
-    double chi2inv(double p, unsigned int dim);
-
-    class Marginals
-    {
-    public:
-        explicit Marginals(const Eigen::MatrixXd &S) : S_(S) {}
-        const Eigen::Block<const Eigen::MatrixXd> operator()(int i, int j) const;
-        const Eigen::Block<const Eigen::MatrixXd> at(int i, int j) const { return (*this)(i, j); }
-
-    private:
-        Eigen::MatrixXd S_;
-    };
 
     struct Association
     {
@@ -36,43 +20,18 @@ namespace jcbb
         int measurement;
         std::optional<int> landmark;
         bool associated() const { return bool(landmark); }
-        double nis(const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S)
-        {
-            if (!associated())
-            {
-                return std::numeric_limits<double>::infinity();
-            }
-            // std::cout << "meas idx: " << measurement << "\nlandmark idx: " << *landmark << "\n";
-            // std::cout << "measurement:\n" << z.segment(2*measurement, 2) << "\n";
-            // std::cout << "landmark:\n" << zbar.segment(2*(*landmark), 2) << "\n";
-            Eigen::VectorXd innov = z.segment(2 * measurement, 2) - zbar.segment(2 * (*landmark), 2);
-            Eigen::MatrixXd Sij = S.at(*landmark, *landmark);
-            return innov.transpose() * Sij.llt().solve(innov);
-        }
+        double nis(const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S);
     };
 
-    struct Hypothesis
+
+    class Hypothesis
     {
+        public:
         Hypothesis(const std::vector<Association::shared_ptr> &associations, double nis) : associations(associations), nis(nis) {}
         double nis;
         std::vector<Association::shared_ptr> associations;
-        int num_associations() const
-        {
-            int n = 0;
-            for (const auto &a : associations)
-            {
-                if (a->associated())
-                {
-                    n++;
-                }
-            }
-            return n;
-        }
-
-        int num_measurements() const
-        {
-            return associations.size();
-        }
+        int num_associations() const;
+        int num_measurements() const;
 
         std::unordered_set<int> associated_landmarks() const
         {
@@ -137,26 +96,10 @@ namespace jcbb
             h.extend(a);
             return h;
         }
-        // std::vector<std::pair<int, int>> measurement_landmark_associations() const
-        // {
-        //     std::vector<std::pair<int, int>> asso_pairs;
-        //     for (const auto &a : associations)
-        //     {
-        //         std::pair<int, int> asso_pair;
-        //         if (a->associated())
-        //         {
-        //             asso_pair = {
-        //                 a->measurement,
-        //                 *a->landmark};
-        //         }
-        //         asso_pairs.push_back(asso_pair);
-        //     }
-        // }
     };
 
-    Hypothesis jcbb(const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S, double jc_prob, double ic_prob);
-double jc(const Hypothesis &h, const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S);
 
+    
 } // namespace jcbb
 
-#endif // JCBB_H
+#endif // HYPOTHESIS_H

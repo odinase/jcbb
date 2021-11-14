@@ -13,7 +13,7 @@
 #include <queue>
 #include <type_traits>
 #include "file_parser.h"
-#include "jcbb.h"
+#include "jcbb/jcbb.h"
 #include <glog/logging.h>
 #include <algorithm>
 

@@ -2,11 +2,13 @@
 #include <eigen3/Eigen/Cholesky>
 #include <boost/math/distributions.hpp>
 #include <cmath>
-#include "jcbb.h"
 #include <vector>
 #include <memory>
 #include <unordered_set>
 #include <utility>
+
+#include "jcbb/jcbb.h"
+#include "jcbb/utils.h"
 
 namespace jcbb
 {
@@ -15,22 +17,6 @@ namespace jcbb
   {
     boost::math::chi_squared dist(dim);
     return quantile(dist, p);
-  }
-  // def wrapToPi(angle):
-  //     return (angle + np.pi) % (2*np.pi) - np.pi
-  constexpr double wrapToPi(double angle)
-  {
-    return fmod(angle + M_PI, 2 * M_PI) - M_PI;
-  }
-
-  bool isSymmetric(const Eigen::MatrixXd &m, const double prec = 1e-3)
-  {
-    return ((m - m.transpose()).array().abs() < prec).all();
-  }
-
-  const Eigen::Block<const Eigen::MatrixXd> Marginals::operator()(int i, int j) const
-  {
-    return S_.block(2 * i, 2 * j, 2, 2);
   }
 
   bool prunable(int tot_num_measurements, const Hypothesis &h, const Hypothesis &best)
