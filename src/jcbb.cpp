@@ -87,7 +87,7 @@ namespace jcbb
     return s.find(k) != s.end();
   }
 
-  std::vector<Hypothesis> successors(const Hypothesis &h, const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S, double ic_prob)
+  std::vector<Hypothesis> JCBB::successors(const Hypothesis &h, const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S, double ic_prob)
   {
     int curr_measurement = h.num_measurements() - 1; // We use zero indexing, so needs to subtract 1
     int next_measurement = curr_measurement + 1;
@@ -97,7 +97,7 @@ namespace jcbb
     }
     std::vector<Hypothesis> hypothesis_successors;
 
-    // Add no association
+    // Add unassociated hypothesis
     Hypothesis successor = h.extended(std::make_shared<Association>(next_measurement));
     hypothesis_successors.push_back(successor);
 
@@ -124,7 +124,7 @@ namespace jcbb
     return hypothesis_successors;
   }
 
-  Hypothesis jcbb(const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S, double jc_prob, double ic_prob)
+  Hypothesis JCBB::jcbb(const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S, double jc_prob, double ic_prob)
   {
     int m = z.size() / 2;
     Hypothesis best_hypothesis{Hypothesis::empty_hypothesis()};

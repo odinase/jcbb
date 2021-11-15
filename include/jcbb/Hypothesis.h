@@ -7,7 +7,7 @@
 #include <eigen3/Eigen/Cholesky>
 #include <memory>
 #include <unordered_set>
-#include "Marginals.h"
+#include "MarginalWrappers.h"
 
 
 namespace jcbb
