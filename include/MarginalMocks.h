@@ -7,10 +7,10 @@
 namespace jcbb
 {
 
-class JointMarginalWrapper
+class JointMarginalMock
 {
 public:
-    explicit JointMarginalWrapper(const Eigen::MatrixXd &P, const gtsam::KeyVector& keys);
+    explicit JointMarginalMock(const Eigen::MatrixXd &P, const gtsam::KeyVector& keys);
     const Eigen::Block<const gtsam::Matrix> operator()(gtsam::Key iVariable, gtsam::Key jVariable) const;
     const Eigen::Block<const gtsam::Matrix> at(gtsam::Key iVariable, gtsam::Key jVariable) const { return (*this)(iVariable, jVariable); }
     const gtsam::Matrix& fullMatrix() const {return P_joint_;}
@@ -20,12 +20,12 @@ private:
     gtsam::KeyVector keys_;
 };
 
-class MarginalsWrapper
+class MarginalsMock
 {
 public:
-    explicit MarginalsWrapper(const Eigen::MatrixXd &P) : P_full_(P) {}
+    explicit MarginalsMock(const Eigen::MatrixXd &P) : P_full_(P) {}
     const Eigen::Block<const gtsam::Matrix> marginalCovariance(gtsam::Key variable) const;
-    JointMarginalWrapper jointMarginalCovariance(const gtsam::KeyVector &variables) const;
+    JointMarginalMock jointMarginalCovariance(const gtsam::KeyVector &variables) const;
 
 private:
     Eigen::MatrixXd P_full_;

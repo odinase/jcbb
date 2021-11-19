@@ -11,12 +11,16 @@
 #include <iostream>
 
 #include <gtsam/base/FastVector.h>
+#include <gtsam/geometry/Pose2.h>
 
-#include "MarginalWrappers.h"
+#include "MarginalMocks.h"
 #include "jcbb/Hypothesis.h"
 
 namespace jcbb
 {
+    using State = gtsam::Pose2;
+    using Landmark = gtsam::Point2;
+    using Measurement = gtsam::Vector2;
     template <class T>
     using FastMinHeap = std::priority_queue<T, gtsam::FastVector<T>, std::greater<T>>;
     double chi2inv(double p, unsigned int dim);
@@ -24,16 +28,26 @@ namespace jcbb
     class JCBB
     {
     public:
-        JCBB();
+        JCBB(const gtsam::Values &estimates, const Marginals &marginals_, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, const Eigen::MatrixXd& sensorOffset, double ic_prob, double jc_prob);
+        double joint_compatability(const Hypothesis &h) const;
+        double individual_compatability(const Association &a) const;
+        Hypothesis jcbb() const;
 
     private:
-        Hypothesis jcbb(const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S, double jc_prob, double ic_prob);
-        double jc(const Hypothesis &h, const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S);
-        Hypothesis jcbb(const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S, double jc_prob, double ic_prob);
-        std::vector<Hypothesis> successors(const Hypothesis &h, const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S, double ic_prob);
-        bool feasible(const Hypothesis &h, double jc_prob, const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S);
-        bool prunable(int tot_num_measurements, const Hypothesis &h, const Hypothesis &best);
+    const Eigen::MatrixXd sensorOffset_;
+        const gtsam::Values &estimates_;
+        const Marginals &marginals_;
+        const gtsam::FastVector<Measurement> &measurements_;
+        const gtsam::noiseModel::Diagonal::shared_ptr meas_noise_;
+        State x_pose_;
+        gtsam::Key x_key_;
+        gtsam::KeyList landmark_keys_;
+        double ic_prob_;
+        double jc_prob_;
 
+        gtsam::FastVector<Hypothesis> successors(const Hypothesis &h) const;
+        bool feasible(const Hypothesis &h) const;
+        bool prunable(const Hypothesis &h, const Hypothesis &best) const;
         // std::unordered_map<>
     };
 

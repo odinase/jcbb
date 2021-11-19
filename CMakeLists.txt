@@ -16,41 +16,52 @@ include_directories(
     eigen3
 )
 
-# add_library(utils
-#     src/utils
-# )
+add_library(utils
+    src/utils
+)
 
-# add_library(jcbb
-#     src/jcbb
-# )
+add_library(hypothesis
+src/Hypothesis
+)
 
-# target_link_libraries(jcbb
-#     utils
-#     ${Boost_LIBRARIES}
-#     gtsam
-# )
-
-# add_executable(main
-#     main.cpp
-#     src/file_parser.cpp
-# )
-
-# target_link_libraries(main
-#     Eigen3::Eigen
-#     ${Boost_LIBRARIES}
-#     glog::glog
-#     jcbb
-#     utils
-# )
+target_link_libraries(hypothesis
+gtsam
+)
 
 add_library(marginals
-    src/MarginalWrappers.cpp
+    src/MarginalMocks.cpp
 )
 
 target_link_libraries(marginals
     gtsam
     Eigen3::Eigen
 )
+
+add_library(jcbb
+    src/jcbb
+)
+
+target_link_libraries(jcbb
+    utils
+    ${Boost_LIBRARIES}
+    gtsam
+    hypothesis
+    marginals
+)
+
+add_executable(main
+    main.cpp
+    src/file_parser.cpp
+)
+
+target_link_libraries(main
+    Eigen3::Eigen
+    ${Boost_LIBRARIES}
+    glog::glog
+    jcbb
+    utils
+)
+
 
 add_executable(testing
     testing.cpp

@@ -7,98 +7,74 @@
 #include <eigen3/Eigen/Cholesky>
 #include <memory>
 #include <unordered_set>
-#include "MarginalWrappers.h"
-
+#include <gtsam/base/Matrix.h>
+#include <gtsam/inference/Key.h>
+#include "MarginalMocks.h"
 
 namespace jcbb
 {
+    // Config here between mock-up or GTSAM version.
+    using Marginals = MarginalsMock;
+    using JointMarginal = JointMarginalMock;
 
     struct Association
     {
-        Association(int m, std::optional<int> l = {}) : measurement(m), landmark(l) {}
+        Association(int m);
+        Association(int m, gtsam::Key l, const gtsam::Matrix& Hx, const gtsam::Matrix& Hl, const gtsam::Vector& error);
         typedef std::shared_ptr<Association> shared_ptr;
         int measurement;
-        std::optional<int> landmark;
+        std::optional<gtsam::Key> landmark;
+        gtsam::Matrix Hx;
+        gtsam::Matrix Hl;
         bool associated() const { return bool(landmark); }
-        double nis(const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S);
+        // double nis(const Eigen::VectorXd &z, const Eigen::VectorXd &zbar, const Marginals &S);
+        gtsam::Vector error;
     };
 
 
     class Hypothesis
     {
+        private:
+        double nis_;
+        gtsam::FastVector<Association::shared_ptr> assos_;
+
         public:
-        Hypothesis(const std::vector<Association::shared_ptr> &associations, double nis) : associations(associations), nis(nis) {}
-        double nis;
-        std::vector<Association::shared_ptr> associations;
+        Hypothesis(const gtsam::FastVector<Association::shared_ptr> &associations, double nis) : assos_(associations), nis_(nis) {}
         int num_associations() const;
         int num_measurements() const;
+        void set_nis(double nis) {nis_ = nis;}
+        double get_nis() const {return nis_;}
 
-        std::unordered_set<int> associated_landmarks() const
-        {
-            std::unordered_set<int> landmarks;
-            for (const auto &a : associations)
-            {
-                if (a->associated())
-                {
-                    landmarks.insert(*a->landmark);
-                }
-            }
-            return landmarks;
-        }
+    gtsam::KeyVector associated_landmarks() const;
         // Needed for min heap
-        bool operator<(const Hypothesis &rhs) const
-        {
-            return num_associations() > rhs.num_associations() || (num_associations() == rhs.num_associations() && nis < rhs.nis);
-        }
+        bool operator<(const Hypothesis &rhs) const;
 
         // Needed for min heap
-        bool operator>(const Hypothesis &rhs) const
-        {
-            return num_associations() < rhs.num_associations() || (num_associations() == rhs.num_associations() && nis > rhs.nis);
-        }
+        bool operator>(const Hypothesis &rhs) const;
 
         // Added for completion of comparision operators
-        bool operator==(const Hypothesis &rhs) const
-        {
-            return num_associations() == rhs.num_associations() && nis == rhs.nis;
-        }
+        bool operator==(const Hypothesis &rhs) const;
 
         // Added for completion of comparision operators
-        bool operator<=(const Hypothesis &rhs) const
-        {
-            return *this < rhs || *this == rhs;
-        }
+        bool operator<=(const Hypothesis &rhs) const;
 
         // Added for completion of comparision operators
-        bool operator>=(const Hypothesis &rhs) const
-        {
-            return *this > rhs || *this == rhs;
-        }
+        bool operator>=(const Hypothesis &rhs) const;
 
-        bool better_than(const Hypothesis &other) const
-        {
-            return *this < other;
-        }
+        bool better_than(const Hypothesis &other) const;
 
-        static Hypothesis empty_hypothesis()
-        {
-            return Hypothesis{{}, std::numeric_limits<double>::infinity()};
-        }
+        static Hypothesis empty_hypothesis();
 
-        void extend(const Association::shared_ptr &a)
-        {
-            associations.push_back(a);
-        }
+        void extend(const Association::shared_ptr &a);
 
-        Hypothesis extended(const Association::shared_ptr &a) const
-        {
-            Hypothesis h(*this);
-            h.extend(a);
-            return h;
-        }
+        Hypothesis extended(const Association::shared_ptr &a) const;
+
+        const gtsam::FastVector<Association::shared_ptr>& associations() const {
+            return assos_;
+        } 
+
+    gtsam::FastVector<std::pair<int, gtsam::Key>> measurement_landmark_associations() const;
     };
-
-
     
 } // namespace jcbb
 
