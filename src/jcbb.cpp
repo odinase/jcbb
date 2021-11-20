@@ -129,7 +129,7 @@ namespace jcbb
     gtsam::KeyVector joint_states;
     joint_states.push_back(x_key_);
     int num_associated_meas_to_lmk = 0;
-    for (const auto asso : h.associations())
+    for (const auto& asso : h.associations())
     {
       if (asso->associated())
       {
