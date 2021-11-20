@@ -24,7 +24,12 @@ namespace jcbb
     return quantile(dist, p);
   }
 
-  JCBB::JCBB(const gtsam::Values &estimates, const Marginals &marginals, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, const Eigen::MatrixXd& sensorOffset, double ic_prob, double jc_prob)
+  bool exists(const gtsam::KeyVector &s, gtsam::Key k)
+  {
+    return std::find(s.begin(), s.end(), k) != s.end();
+  }
+
+  JCBB::JCBB(const gtsam::Values &estimates, const Marginals &marginals, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, const Eigen::MatrixXd &sensorOffset, double ic_prob, double jc_prob)
       : estimates_(estimates),
         marginals_(marginals),
         measurements_(measurements),
@@ -63,25 +68,23 @@ namespace jcbb
     return nis < chi2inv(1 - jc_prob_, N * 2);
   }
 
-  bool exists(const gtsam::KeyVector &s, gtsam::Key k)
+  void JCBB::push_successors_on_heap(FastMinHeap<Hypothesis>* min_heap, const Hypothesis &h) const
   {
-    return std::find(s.begin(), s.end(), k) != s.end();
-  }
-
-  gtsam::FastVector<Hypothesis> JCBB::successors(const Hypothesis &h) const
-  {
+    // Should probably keep this in...
+    // if (min_heap == nullptr) {
+    //   return;
+    // }
     int curr_measurement = h.num_measurements() - 1; // We use zero indexing, so needs to subtract 1
     int next_measurement = curr_measurement + 1;
     int tot_num_measurements = measurements_.size();
     if ((next_measurement + 1) > tot_num_measurements)
     { // We have no more measurements to check, so no successors
-      return {};
+      return;
     }
-    gtsam::FastVector<Hypothesis> hypothesis_successors;
 
     // Add unassociated hypothesis
     Hypothesis successor = h.extended(std::make_shared<Association>(next_measurement));
-    hypothesis_successors.push_back(successor);
+    min_heap->push(successor);
 
     gtsam::KeyVector associated_landmarks = h.associated_landmarks();
     Measurement meas = measurements_[next_measurement];
@@ -98,7 +101,6 @@ namespace jcbb
         continue;
       }
 
-      // gtsam::BearingRangeFactor<State, Landmark> factor(l, x_key_, bearing, range, noise);
       RangeBearingFactor factor(l, x_key_, range, bearing, sensorOffset_, noise);
 
       Landmark lmk = estimates_.at<Landmark>(l);
@@ -112,13 +114,10 @@ namespace jcbb
         Hypothesis successor = h.extended(std::make_shared<Association>(a));
         double joint_nis = joint_compatability(successor);
         successor.set_nis(joint_nis);
-        hypothesis_successors.push_back(successor);
+        min_heap->push(successor);
       }
     }
-
-    return hypothesis_successors;
   }
-
 
   double JCBB::joint_compatability(const Hypothesis &h) const
   {
@@ -130,38 +129,40 @@ namespace jcbb
     gtsam::KeyVector joint_states;
     joint_states.push_back(x_key_);
     int num_associated_meas_to_lmk = 0;
-    for (const auto asso: h.associations()) {
-      if (asso->associated()) {
+    for (const auto asso : h.associations())
+    {
+      if (asso->associated())
+      {
         num_associated_meas_to_lmk++;
-      joint_states.push_back(*asso->landmark);
+        joint_states.push_back(*asso->landmark);
       }
     }
 
     Eigen::MatrixXd Pjoint = marginals_.jointMarginalCovariance(joint_states).fullMatrix();
 
-    Eigen::MatrixXd H = Eigen::MatrixXd::Zero(num_associated_meas_to_lmk*d, n + num_associated_meas_to_lmk*m);
-    Eigen::MatrixXd R = Eigen::MatrixXd::Zero(num_associated_meas_to_lmk*d, num_associated_meas_to_lmk*d);
+    Eigen::MatrixXd H = Eigen::MatrixXd::Zero(num_associated_meas_to_lmk * d, n + num_associated_meas_to_lmk * m);
+    Eigen::MatrixXd R = Eigen::MatrixXd::Zero(num_associated_meas_to_lmk * d, num_associated_meas_to_lmk * d);
 
     Eigen::VectorXd innov(N * d);
     int k = 0, j = 0;
 
     for (const auto &a : h.associations())
     {
-      if (a->associated()) {
-      innov.segment(k, d) = a->error;
-      innov(k + 1) = wrapToPi(innov(k + 1));
-      H.block(k, 0, d, n) = a->Hx;
-      H.block(k, n + j, d, m) = a->Hl;
+      if (a->associated())
+      {
+        innov.segment(k, d) = a->error;
+        H.block(k, 0, d, n) = a->Hx;
+        H.block(k, n + j, d, m) = a->Hl;
 
-      // Adding R might be done more cleverly
-      R.block(k, k, d, d) = meas_noise_->sigmas().array().square().matrix().asDiagonal();
+        // Adding R might be done more cleverly
+        R.block(k, k, d, d) = meas_noise_->sigmas().array().square().matrix().asDiagonal();
 
-      k += d;
-      j += m;
+        k += d;
+        j += m;
       }
     }
 
-    Eigen::MatrixXd Sjoint = H*Pjoint*H.transpose() + R;
+    Eigen::MatrixXd Sjoint = H * Pjoint * H.transpose() + R;
 
     double nis = innov.transpose() * Sjoint.llt().solve(innov);
     return nis;
@@ -187,10 +188,8 @@ namespace jcbb
     return innov.transpose() * S.llt().solve(innov);
   }
 
-
   Hypothesis JCBB::jcbb() const
   {
-    int m = measurements_.size();
     Hypothesis best_hypothesis{Hypothesis::empty_hypothesis()};
     FastMinHeap<Hypothesis> min_heap;
     min_heap.push(Hypothesis::empty_hypothesis());
@@ -206,11 +205,7 @@ namespace jcbb
         {
           best_hypothesis = hypothesis;
         }
-        gtsam::FastVector<Hypothesis> hypothesis_successors = successors(hypothesis);
-        for (const auto &h : hypothesis_successors)
-        {
-          min_heap.push(h);
-        }
+        push_successors_on_heap(&min_heap, hypothesis);
       }
     }
 

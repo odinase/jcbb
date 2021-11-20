@@ -28,7 +28,7 @@ namespace jcbb
             gtsam::Vector dp = Rr.inverse() * (lmk - x.translation()) - sensorOffset_;
             double range = dp.norm();
             double bearing = atan2(dp(1), dp(0));
-            error << range_ - range, bearing_ - bearing;
+            error << range_ - range, wrapToPi(bearing_ - bearing);
             if (H1)
             {
                 gtsam::Vector n = Rr * dp;
