@@ -127,19 +127,7 @@ namespace jcbb
     int m = Landmark::RowsAtCompileTime;
     int d = Measurement::RowsAtCompileTime; // Measurement dim
 
-    // auto measurement_landmark_associations = h.measurement_landmark_associations();
-    // Eigen::MatrixXd Sjoint(N * d, N * d);
-    // for (int i = 0; i < measurement_landmark_associations.size(); i++)
-    // {
-    //   int li = measurement_landmark_associations[i].second;
-    //   for (int j = i; j < measurement_landmark_associations.size(); j++)
-    //   {
-    //     int lj = measurement_landmark_associations[j].second;
-    //     Sjoint.block(d * i, d * j, d, d) = S.at(li, lj);
-    //   }
-    // }
     gtsam::KeyVector joint_states;
-    // joint_states.reserve(measurement_landmark_associations.size()+1);
     joint_states.push_back(x_key_);
     int num_associated_meas_to_lmk = 0;
     for (const auto asso: h.associations()) {

@@ -24,30 +24,30 @@ namespace jcbb
         gtsam::Vector evaluateError(const gtsam::Pose2 &x, const gtsam::Point2 &lmk, boost::optional<gtsam::Matrix &> H1, boost::optional<gtsam::Matrix &> H2) const
         {
             gtsam::Vector error(2);
-            gtsam::Rot2 Rr(-x.theta());
-            gtsam::Vector dp = Rr * (lmk - x.translation()) - sensorOffset_;
-            // gtsam::Vector x_polar(2), lmk_polar(2);
+            gtsam::Rot2 Rr = x.rotation();
+            gtsam::Vector dp = Rr.inverse() * (lmk - x.translation()) - sensorOffset_;
             double range = dp.norm();
             double bearing = atan2(dp(1), dp(0));
             error << range_ - range, bearing_ - bearing;
             if (H1)
             {
-                gtsam::Vector n = lmk - x.translation();
+                gtsam::Vector n = Rr * dp;
                 *H1 = gtsam::Matrix(2, 3);
                 double n_norm = n.norm();
-                gtsam::Rot2 R(-M_PI / 2.0);
-                *H1 << n.transpose() / n_norm, 0,
-                    n.transpose() / (n_norm * n_norm) * R.matrix(), 1;
-                *H1 = -(*H1);
+                gtsam::Rot2 R(M_PI / 2.0);
+                gtsam::Matrix jac_z_b(2, 3);
+                jac_z_b << -gtsam::Matrix::Identity(2,2), -R.matrix()*(lmk - x.translation());
+                *H1 << n.transpose() / n_norm*jac_z_b,
+                    n.transpose() / (n_norm * n_norm) * R.matrix().transpose()*jac_z_b;
             }
             if (H2)
             {
-                gtsam::Vector n = lmk - x.translation();
+                gtsam::Vector n = Rr* dp;
                 *H2 = gtsam::Matrix(2, 2);
                 double n_norm = n.norm();
-                gtsam::Rot2 R(-M_PI / 2.0);
+                gtsam::Rot2 R(M_PI / 2.0);
                 *H2 << n_norm * n.transpose(),
-                    n.transpose() * R.matrix();
+                    n.transpose() * R.matrix().transpose();
                 *H2 = *H2 / (n_norm * n_norm);
             }
             return error;
