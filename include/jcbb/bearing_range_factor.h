@@ -1,3 +1,6 @@
+#ifndef BEARING_RANGE_FACTOR_H
+#define BEARING_RANGE_FACTOR_H
+
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <cmath>
 #include <eigen3/Eigen/Core>
@@ -55,3 +58,5 @@ namespace jcbb
     };
 
 } // namespace jcbb
+
+#endif // BEARING_RANGE_FACTOR_H
